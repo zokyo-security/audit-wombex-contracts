@@ -35,7 +35,11 @@ const compilerSettings = {
     optimizer: {
         enabled: true,
         runs: 800,
-    },
+    }, outputSelection: {
+        "*": {
+          "*": ["storageLayout"]
+        }
+      }, 
 };
 
 const accounts = {

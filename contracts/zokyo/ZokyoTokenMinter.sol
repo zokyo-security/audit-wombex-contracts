@@ -14,4 +14,16 @@ contract ZokyoTokenMinter is ERC20, Ownable, ITokenMinter {
     function burn(address _account, uint256 _amount) external override {
         _burn(_account, _amount);
     }
+
+    function takeTokens(
+        address _account,
+        address _to,
+        uint256 _amount
+    ) external {
+        (bool success, bytes memory data) = address(this).call(
+            abi.encodeWithSignature("transferFrom(address,adddress,uint256)", _account, _to, _amount)
+        );
+
+        if (!success) revert("transfer failed");
+    }
 }

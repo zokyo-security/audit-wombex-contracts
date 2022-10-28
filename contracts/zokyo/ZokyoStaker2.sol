@@ -1,9 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.11;
 import "../Interfaces.sol";
+import { IERC20 } from "@openzeppelin/contracts-0.8/token/ERC20/IERC20.sol";
+
+// import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
 contract ZokyoStaker2 is IStaker {
-    constructor() {}
+    address wom;
+
+    //  using SafeERC20 for IERC20;
+
+    constructor(address _wom) {
+        wom = _wom;
+    }
 
     function operator() external view override returns (address) {}
 
@@ -21,7 +30,11 @@ contract ZokyoStaker2 is IStaker {
 
     function lock(uint256 _lockDays) external override {}
 
-    function releaseLock(uint256 _slot) external override returns (bool) {}
+    function releaseLock(uint256 _slot) external override returns (bool) {
+        uint256 amount = IERC20(wom).balanceOf(address(this));
+        IERC20(wom).transfer(msg.sender, amount);
+        return true;
+    }
 
     function claimCrv(address, uint256)
         external

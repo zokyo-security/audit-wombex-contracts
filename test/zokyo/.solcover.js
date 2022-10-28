@@ -31,6 +31,7 @@ module.exports = {
         "zokyo/ZokyoRewards.sol",
         "zokyo/ZokyoStaker2.sol",
         "zokyo/ZokyoTokenMinter.sol",
+        "zokyo/ZokyoMmxMath.sol",
         "mocks/MasterWombat.sol",
         "mocks/MockERC20.sol",
         "mocks/MockVoteStorage.sol",

@@ -110,4 +110,90 @@ describe("Test WomStakingProxy", () => {
             );
         });
     });
+
+    describe("Test queueNewRewards", async () => {
+        it("Should queue new rewards with zero amount", async () => {
+            expect(await erc20Wom.callStatic.balanceOf(user2.address)).to.be.equal(0);
+            expect(await womStakingProxyContract.connect(user2).queueNewRewards(ZERO_ADDRESS, 0));
+            expect(await erc20Wom.callStatic.balanceOf(user2.address)).to.be.equal(0);
+        });
+
+        it("Should fail to transfer due to insufficient balance", async () => {
+            expect(await erc20Wom.callStatic.balanceOf(user2.address)).to.be.equal(0);
+            await expect(womStakingProxyContract.connect(user2).queueNewRewards(ZERO_ADDRESS, 1)).to.be.revertedWith(
+                "ERC20: transfer amount exceeds balance",
+            );
+            expect(await erc20Wom.callStatic.balanceOf(user2.address)).to.be.equal(0);
+        });
+
+        it("Should fail to transfer wom from user to contract due to insufficient allowance", async () => {
+            await erc20Wom.mint(user2.address, 10);
+
+            expect(await erc20Wom.callStatic.balanceOf(user2.address)).to.be.equal(10);
+
+            expect(await erc20Wom.callStatic.balanceOf(womStakingProxyContract.address)).to.be.equal(0);
+
+            await expect(womStakingProxyContract.connect(user2).queueNewRewards(ZERO_ADDRESS, 5)).to.be.revertedWith(
+                "ERC20: transfer amount exceeds allowance",
+            );
+
+            // expect(await erc20Wom.callStatic.balanceOf(user2.address)).to.be.equal(10);
+            expect(await erc20Wom.callStatic.balanceOf(womStakingProxyContract.address)).to.be.equal(0);
+        });
+
+        it("Should transfer wom from user to contract", async () => {
+            await erc20Wom.mint(user2.address, 10);
+
+            expect(await erc20Wom.callStatic.balanceOf(user2.address)).to.be.equal(10);
+
+            expect(await erc20Wom.callStatic.balanceOf(womStakingProxyContract.address)).to.be.equal(0);
+
+            await erc20Wom.connect(user2).approve(womStakingProxyContract.address, 5);
+
+            expect(await womStakingProxyContract.setApprovals());
+
+            expect(await womStakingProxyContract.connect(user2).queueNewRewards(ZERO_ADDRESS, 5));
+
+            expect(await erc20Wom.callStatic.balanceOf(user2.address)).to.be.equal(5);
+            expect(await erc20Wom.callStatic.balanceOf(womStakingProxyContract.address)).to.be.equal(0);
+            expect(await erc20Wom.callStatic.balanceOf(womDepositorContract.address)).to.be.equal(0);
+            expect(await erc20Wom.callStatic.balanceOf(zokyoStaker2.address)).to.be.equal(5);
+        });
+
+        it("Should fail transfer wom from proxy to depositor due to allowance", async () => {
+            await erc20Wom.mint(user2.address, 10);
+
+            expect(await erc20Wom.callStatic.balanceOf(user2.address)).to.be.equal(10);
+
+            expect(await erc20Wom.callStatic.balanceOf(womStakingProxyContract.address)).to.be.equal(0);
+
+            await erc20Wom.connect(user2).approve(womStakingProxyContract.address, 5);
+
+            await expect(womStakingProxyContract.connect(user2).queueNewRewards(ZERO_ADDRESS, 5)).to.be.revertedWith(
+                "ERC20: transfer amount exceeds allowance",
+            );
+        });
+
+        it("Should distribute wmxWom to user", async () => {
+            await erc20Wom.mint(user2.address, 10);
+            await zokyoWmxWom.mint(womStakingProxyContract.address, 10);
+
+            expect(await erc20Wom.callStatic.balanceOf(user2.address)).to.be.equal(10);
+
+            expect(await erc20Wom.callStatic.balanceOf(womStakingProxyContract.address)).to.be.equal(0);
+
+            await erc20Wom.connect(user2).approve(womStakingProxyContract.address, 5);
+
+            expect(await womStakingProxyContract.setApprovals());
+
+            await expect(womStakingProxyContract.connect(user2).queueNewRewards(ZERO_ADDRESS, 5))
+                .to.emit(womStakingProxyContract, "RewardsDistributed")
+                .withArgs(zokyoWmxWom.address, 10);
+
+            expect(await erc20Wom.callStatic.balanceOf(user2.address)).to.be.equal(5);
+            expect(await erc20Wom.callStatic.balanceOf(womStakingProxyContract.address)).to.be.equal(0);
+            expect(await erc20Wom.callStatic.balanceOf(womDepositorContract.address)).to.be.equal(0);
+            expect(await erc20Wom.callStatic.balanceOf(zokyoStaker2.address)).to.be.equal(5);
+        });
+    });
 });

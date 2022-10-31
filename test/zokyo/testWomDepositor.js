@@ -156,6 +156,34 @@ describe("Test WomDepositor", () => {
     });
 
     describe("Deposit tokens with setting configs", async () => {
+        it("Should check deposit with custom deposit", async () => {
+            await expect(womDepositorContract.setLockConfig(1, ONE_MIN))
+                .to.emit(womDepositorContract, "SetLockConfig")
+                .withArgs(1, ONE_MIN);
+            await erc20Wom.mint(user2.address, 4);
+            await erc20Wom.mint(user3.address, 4);
+
+            await erc20Wom.connect(user2).approve(womDepositorContract.address, 4);
+            await erc20Wom.connect(user3).approve(womDepositorContract.address, 4);
+
+            await expect(womDepositorContract.setCustomLock(user3.address, 1, 2))
+                .to.emit(womDepositorContract, "SetCustomLockDays")
+                .withArgs(user3.address, 1, 2);
+
+            await expect(womDepositorContract.connect(user3)["depositCustomLock(uint256)"](2)).to.emit(
+                womDepositorContract,
+                "SmartLock",
+            );
+
+            expect(await womDepositorContract.callStatic.checkOldSlot()).to.be.equal(0);
+            expect(await womDepositorContract.callStatic.lockedCustomSlots(0)).to.be.true;
+            await increaseTime(ONE_DAY * 2);
+
+            await expect(womDepositorContract.connect(user3)["depositCustomLock(uint256)"](2))
+                .to.emit(womDepositorContract, "SmartLock")
+                .withArgs(user3.address, true, 1, 2, 1, 2, 0, false);
+        });
+
         it("Should deposit not trigger lock until lock period expires", async () => {
             await expect(womDepositorContract.setLockConfig(1, ONE_MIN))
                 .to.emit(womDepositorContract, "SetLockConfig")

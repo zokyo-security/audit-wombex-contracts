@@ -1,13 +1,7 @@
 ## Install dependency
 
 ```bash
-cd @defi-wonderland/smock
-yarn
-yarn link
-cd ..
-cd ..
-yarn link @defi-wonderland/smock
-yarn add --dev @types/chai-as-promised chai-as-promised
+yarn add --dev @defi-wonderland/smock @types/chai-as-promised chai-as-promised
 ```
 
 ## Run tests

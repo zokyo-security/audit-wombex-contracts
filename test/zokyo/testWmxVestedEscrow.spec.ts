@@ -13,7 +13,7 @@ import { WmxLocker, WmxVestedEscrow, WmxVestedEscrow__factory, ERC20 } from "../
 import { impersonateAccount } from "../../test-utils/fork";
 import { getTimestamp, increaseTime } from "../../test-utils/time";
 import { DEAD_ADDRESS, ONE_WEEK } from "../../test-utils/constants";
-import { MockContract, smock } from '@defi-wonderland/smock/src';
+import { MockContract, smock } from '@defi-wonderland/smock';
 
 chai.should();
 chai.use(smock.matchers);

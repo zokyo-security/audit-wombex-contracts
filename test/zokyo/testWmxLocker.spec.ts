@@ -1,4 +1,4 @@
-import { MockContract, smock } from "@defi-wonderland/smock/src";
+import { MockContract, smock } from "@defi-wonderland/smock";
 import chai, { expect } from "chai";
 import chaiAsPromised from "chai-as-promised";
 import { ContractTransaction, Signer } from "ethers";

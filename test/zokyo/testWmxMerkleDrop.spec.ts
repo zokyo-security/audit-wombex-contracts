@@ -13,7 +13,7 @@ import { getTimestamp, increaseTime, increaseTimeTo } from "../../test-utils/tim
 import { DEAD_ADDRESS, MAX_UINT256, ONE_WEEK, ONE_YEAR, ZERO_ADDRESS } from "../../test-utils/constants";
 import { assertBNClose, createTreeWithAccounts, getAccountBalanceProof, impersonateAccount } from "../../test-utils";
 import MerkleTree from "merkletreejs";
-import { MockContract, smock } from "@defi-wonderland/smock/src";
+import { MockContract, smock } from "@defi-wonderland/smock";
 import chaiAsPromised from "chai-as-promised";
 
 chai.should();

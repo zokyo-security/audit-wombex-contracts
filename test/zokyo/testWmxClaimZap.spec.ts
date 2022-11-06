@@ -12,7 +12,7 @@ import { ONE_WEEK, ZERO_ADDRESS, DEAD_ADDRESS, MAX_UINT256 } from "../../test-ut
 import { simpleToExactAmount } from "../../test-utils/math";
 import { BaseRewardPool__factory, WmxClaimZap, WmxClaimZap__factory } from "../../types/generated";
 import {impersonateAccount} from "../../test-utils";
-import { MockContract, smock } from "@defi-wonderland/smock/src";
+import { MockContract, smock } from "@defi-wonderland/smock";
 
 chai.should();
 chai.use(smock.matchers);

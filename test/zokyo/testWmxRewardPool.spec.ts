@@ -11,7 +11,7 @@ import { BN, simpleToExactAmount } from "../../test-utils/math";
 import { WmxLocker, WmxRewardPool, WmxRewardPool__factory, ERC20 } from "../../types/generated";
 import { getTimestamp, increaseTime } from "../../test-utils/time";
 import { ONE_DAY, ONE_WEEK, ZERO_ADDRESS } from "../../test-utils/constants";
-import { MockContract, smock } from '@defi-wonderland/smock/src';
+import { MockContract, smock } from '@defi-wonderland/smock';
 import { assertBNClose, assertBNClosePercent } from "../../test-utils/assertions";
 
 chai.should();

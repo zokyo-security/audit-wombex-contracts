@@ -27,7 +27,9 @@
         "export-sol": "sh ./copy-to-public-repo.sh"
     },
     "dependencies": {
-        "@openzeppelin/contracts-0.6": "npm:@openzeppelin/contracts@3.4.0"
+        "@openzeppelin/contracts-0.6": "npm:@openzeppelin/contracts@3.4.0",
+        "@types/chai-as-promised": "^7.1.5",
+        "chai-as-promised": "^7.1.1"
     },
     "devDependencies": {
         "@balancer-labs/balancer-js": "^1.0.1",
@@ -53,7 +55,7 @@
         "@types/node": "^16.11.10",
         "@typescript-eslint/eslint-plugin": "^5.4.0",
         "@typescript-eslint/parser": "^5.4.0",
-        "chai": "^4.3.4",
+        "chai": "4.0.2",
         "commitizen": "^4.2.4",
         "cross-env": "^7.0.3",
         "cz-conventional-changelog": "^3.3.0",
@@ -94,5 +96,6 @@
     ],
     "publishConfig": {
         "access": "public"
-    }
+    },
+    "packageManager": "yarn@1.22.1"
 }

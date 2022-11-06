@@ -1,0 +1,29 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.EditableStorageLogic = void 0;
+const utils_1 = require("../utils");
+const storage_1 = require("../utils/storage");
+class EditableStorageLogic {
+    constructor(storageLayout, vmManager, contractAddress) {
+        this.storageLayout = storageLayout;
+        this.vmManager = vmManager;
+        this.contractAddress = contractAddress;
+    }
+    async setVariable(variableName, value) {
+        if (value === undefined || value === null)
+            return;
+        const slots = (0, storage_1.computeStorageSlots)(this.storageLayout, { [variableName]: value });
+        for (const slot of slots) {
+            await this.vmManager.putContractStorage((0, utils_1.toFancyAddress)(this.contractAddress), (0, utils_1.fromHexString)(slot.key), (0, utils_1.fromHexString)(slot.val));
+        }
+    }
+    async setVariables(variables) {
+        if (variables === undefined || variables === null)
+            return;
+        for (const [variableName, variableValue] of Object.entries(variables)) {
+            await this.setVariable(variableName, variableValue);
+        }
+    }
+}
+exports.EditableStorageLogic = EditableStorageLogic;
+//# sourceMappingURL=editable-storage-logic.js.map

@@ -97,16 +97,16 @@ export const resolveAddress = (
                 );
 
             address = token[tokenType];
-            console.log(
-                `Resolved asset with symbol "${addressContractNameSymbol}" and type "${tokenType}" to address ${address}`,
-            );
+            // console.log(
+            //     `Resolved asset with symbol "${addressContractNameSymbol}" and type "${tokenType}" to address ${address}`,
+            // );
 
             // Update the singleton instance so we don't need to resolve this next time
             updateResolvedAddresses(addressContractNameSymbol, tokenType, address);
             return address;
         }
 
-        console.log(`Resolved contract name "${addressContractNameSymbol}" to address ${address}`);
+        // console.log(`Resolved contract name "${addressContractNameSymbol}" to address ${address}`);
 
         // Update the singleton instance so we don't need to resolve this next time
         updateResolvedAddresses(addressContractNameSymbol, tokenType, address);
@@ -132,7 +132,7 @@ export const resolveToken = (
     if (!token) throw Error(`Can not find token symbol ${symbol} on chain ${chain}`);
     if (!token[tokenType]) throw Error(`Can not find token type "${tokenType}" for ${symbol} on chain ${chain}`);
 
-    console.log(`Resolved token symbol ${symbol} and type "${tokenType}" to address ${token[tokenType]}`);
+    // console.log(`Resolved token symbol ${symbol} and type "${tokenType}" to address ${token[tokenType]}`);
 
     if (resolvedTokenInstances[symbol]) {
         resolvedTokenInstances[symbol][tokenType] = token;

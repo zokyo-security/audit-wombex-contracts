@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
-
+// import "hardhat/console.sol";
 /**
  * @title   RewardFactory
  * @author  ConvexFinance -> WombexFinance
@@ -18,7 +18,7 @@ import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 contract RewardFactory {
     using Address for address;
 
-    address public immutable operator;
+    address public operator;
     address public immutable crv;
 
     event RewardPoolCreated(address rewardPool, uint256 _pid, address depositToken);
@@ -39,10 +39,11 @@ contract RewardFactory {
         require(msg.sender == operator, "!auth");
 
         //operator = booster(deposit) contract so that new crv/wom can be added and distributed
-
-        BaseRewardPool4626 rewardPool = new BaseRewardPool4626(_pid, _depositToken, crv, operator, _lptoken);
-
+    
+        BaseRewardPool4626 rewardPool = new BaseRewardPool4626(_pid,_depositToken,crv,operator, address(this), _lptoken);
+        
         emit RewardPoolCreated(address(rewardPool), _pid, _depositToken);
+
         return address(rewardPool);
     }
 }

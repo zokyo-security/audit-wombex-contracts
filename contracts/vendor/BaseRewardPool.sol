@@ -46,6 +46,8 @@ import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
+// import "hardhat/console.sol";
+
 /**
  * @title   BaseRewardPool
  * @author  Synthetix -> ConvexFinance -> WombexFinance
@@ -58,14 +60,15 @@ contract BaseRewardPool {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    IERC20 public immutable stakingToken;
-    IERC20 public immutable boosterRewardToken;
+    IERC20 public  stakingToken;
+    IERC20 public  boosterRewardToken;
     uint256 public constant DURATION = 7 days;
     uint256 public constant NEW_REWARD_RATIO = 830;
     uint256 public constant MAX_TOKENS = 100;
 
-    address public operator;
-    uint256 public pid;
+    address public  operator;
+    address public  rewardManager;
+    uint256 public  pid;
 
     mapping(address => uint256) private _balances;
     uint256 private _totalSupply;
@@ -79,7 +82,6 @@ contract BaseRewardPool {
         uint256 queuedRewards;
         uint256 currentRewards;
         uint256 historicalRewards;
-        bool paused;
     }
 
     mapping(address => RewardState) public tokenRewards;
@@ -88,47 +90,30 @@ contract BaseRewardPool {
     mapping(address => mapping(address => uint256)) public userRewardPerTokenPaid;
     mapping(address => mapping(address => uint256)) public rewards;
 
-    event UpdateOperatorData(address indexed sender, address indexed operator, uint256 indexed pid);
-    event SetRewardTokenPaused(address indexed sender, address indexed token, bool indexed paused);
     event RewardAdded(address indexed token, uint256 currentRewards, uint256 newRewards);
     event Staked(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed token, address indexed user, uint256 reward);
-    event Donate(address indexed token, uint256 amount);
 
     /**
      * @dev This is called directly from RewardFactory
-     * @param pid_                  Effectively the pool identifier - used in the Booster
-     * @param stakingToken_         Pool LP token
-     * @param boosterRewardToken_   Reward token for call booster on queueNewRewards
-     * @param operator_             Booster
+     * @param pid_           Effectively the pool identifier - used in the Booster
+     * @param stakingToken_  Pool LP token
+     * @param operator_      Booster
+     * @param rewardManager_ RewardFactory
      */
     constructor(
         uint256 pid_,
         address stakingToken_,
         address boosterRewardToken_,
-        address operator_
+        address operator_,
+        address rewardManager_
     ) public {
         pid = pid_;
         stakingToken = IERC20(stakingToken_);
         boosterRewardToken = IERC20(boosterRewardToken_);
         operator = operator_;
-    }
-
-    function updateOperatorData(address operator_, uint256 pid_) external {
-        require(msg.sender == operator, "!authorized");
-        operator = operator_;
-        pid = pid_;
-
-        emit UpdateOperatorData(msg.sender, operator_, pid_);
-    }
-
-    function setRewardTokenPaused(address token_, bool paused_) external {
-        require(msg.sender == operator, "!authorized");
-
-        tokenRewards[token_].paused = paused_;
-
-        emit SetRewardTokenPaused(msg.sender, token_, paused_);
+        rewardManager = rewardManager_;
     }
 
     function totalSupply() public view virtual returns (uint256) {
@@ -139,6 +124,7 @@ contract BaseRewardPool {
         return _balances[account];
     }
 
+    // 
     modifier updateReward(address account) {
         uint256 len = allRewardTokens.length;
         for (uint256 i = 0; i < len; i++) {
@@ -164,14 +150,6 @@ contract BaseRewardPool {
 
     function earned(address _token, address _account) public view returns (uint256) {
         return _earned(tokenRewards[_token], _account);
-    }
-
-    function claimableRewards(address _account) external view returns (address[] memory tokens, uint256[] memory amounts) {
-        tokens = allRewardTokens;
-        amounts = new uint256[](allRewardTokens.length);
-        for (uint256 i = 0; i < tokens.length; i++) {
-            amounts[i] = _earned(tokenRewards[tokens[i]], _account);
-        }
     }
 
     function stake(uint256 _amount)
@@ -212,6 +190,9 @@ contract BaseRewardPool {
      * @param _receiver  Address of user who will receive the stake
      */
     function _processStake(uint256 _amount, address _receiver) internal updateReward(_receiver) {
+        
+        
+        
         require(_amount > 0, 'RewardPool : Cannot stake 0');
 
         _totalSupply = _totalSupply.add(_amount);
@@ -275,9 +256,6 @@ contract BaseRewardPool {
         uint256 len = allRewardTokens.length;
         for (uint256 i = 0; i < len; i++) {
             RewardState storage rState = tokenRewards[allRewardTokens[i]];
-            if (rState.paused) {
-                continue;
-            }
 
             uint256 reward = _earned(rState, _account);
             if (reward > 0) {
@@ -304,13 +282,8 @@ contract BaseRewardPool {
      * @dev Donate some extra rewards to this contract
      */
     function donate(address _token, uint256 _amount) external returns(bool){
-        uint256 balanceBefore = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
-        _amount = IERC20(_token).balanceOf(address(this)).sub(balanceBefore);
-
         tokenRewards[_token].queuedRewards = tokenRewards[_token].queuedRewards.add(_amount);
-
-        emit Donate(_token, _amount);
     }
 
     /**
@@ -336,10 +309,7 @@ contract BaseRewardPool {
     function queueNewRewards(address _token, uint256 _rewards) external returns(bool){
         require(msg.sender == operator, "!authorized");
 
-        uint256 balanceBefore = IERC20(_token).balanceOf(address(this));
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _rewards);
-
-        _rewards = IERC20(_token).balanceOf(address(this)).sub(balanceBefore);
 
         RewardState storage rState = tokenRewards[_token];
         if (rState.lastUpdateTime == 0) {
@@ -349,6 +319,10 @@ contract BaseRewardPool {
         }
         _rewards = _rewards.add(rState.queuedRewards);
 
+        // console.log("block.timestamp: %s", block.timestamp);
+        // console.log("duration: %s", DURATION);
+        // console.log("rState.periodFinish: %s", rState.periodFinish);
+
         if (block.timestamp >= rState.periodFinish) {
             _notifyRewardAmount(rState, _rewards);
             rState.queuedRewards = 0;
@@ -356,7 +330,12 @@ contract BaseRewardPool {
         }
 
         //et = now - (finish-duration)
+        // console.log("block.timestamp: %s", block.timestamp);
+        // console.log("duration: %s", DURATION);
+        // console.log("rState.periodFinish: %s", rState.periodFinish);
+        
         uint256 elapsedTime = block.timestamp.sub(rState.periodFinish.sub(DURATION));
+        // console.log("heerre dur 1");
         //current at now: rewardRate * elapsedTime
         uint256 currentAtNow = rState.rewardRate * elapsedTime;
         uint256 queuedRatio = currentAtNow.mul(1000).div(_rewards);
@@ -414,13 +393,5 @@ contract BaseRewardPool {
                 .mul(1e18)
                 .div(totalSupply())
             );
-    }
-
-    function rewardTokensLen() external view returns (uint256) {
-        return allRewardTokens.length;
-    }
-
-    function rewardTokensList() external view returns (address[] memory) {
-        return allRewardTokens;
     }
 }

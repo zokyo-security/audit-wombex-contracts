@@ -282,7 +282,7 @@ async function deployTestFirstStage(hre: HardhatRuntimeEnvironment, signer: Sign
         {},
         false,
     );
-    console.log('voting', voting.address);
+    // console.log('voting', voting.address);
 
     const wom = await deployContract<MockERC20>(
         hre,
@@ -326,7 +326,7 @@ async function deployTestFirstStage(hre: HardhatRuntimeEnvironment, signer: Sign
         true,
         waitForBlocks,
     );
-    console.log('pool', pool.address);
+    // console.log('pool', pool.address);
 
     const underlying = await deployContract<MockERC20>(
         hre,
@@ -346,7 +346,7 @@ async function deployTestFirstStage(hre: HardhatRuntimeEnvironment, signer: Sign
         true,
         waitForBlocks,
     );
-    console.log('lptoken', lptoken.address);
+    // console.log('lptoken', lptoken.address);
 
     await pool.addAsset(underlying.address, lptoken.address);
     await underlying.approve(pool.address, simpleToExactAmount(9000000));
@@ -413,7 +413,7 @@ async function deployTestFirstStage(hre: HardhatRuntimeEnvironment, signer: Sign
         true,
         waitForBlocks,
     );
-    console.log('voterProxy', voterProxy.address);
+    // console.log('voterProxy', voterProxy.address);
 
     return {
         ...config,

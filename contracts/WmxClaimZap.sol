@@ -5,6 +5,7 @@ import {WmxMath} from "./WmxMath.sol";
 import {IWmxLocker, IWomDepositorWrapper} from "./Interfaces.sol";
 import "@openzeppelin/contracts-0.8/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.8/token/ERC20/utils/SafeERC20.sol";
+import "hardhat/console.sol";
 
 interface IBasicRewards {
     function getReward(address _account, bool _lockWmx) external;
@@ -172,6 +173,13 @@ contract WmxClaimZap {
         uint256 removeWmxBalance,
         uint256 options
     ) internal {
+
+        // console.log(depositWomMaxAmount);
+        // console.log(minAmountOut);
+        // console.log(depositWmxMaxAmount);
+        // console.log(removeWomBalance);
+        // console.log(removeWmxBalance);
+        // console.log(options);
         //claim from wmxWom rewards
         if (_checkOption(options, Options.ClaimWmxWom)) {
             IBasicRewards(wmxWomRewards).getReward(msg.sender, _checkOption(options, Options.LockWmxRewards));
@@ -213,7 +221,11 @@ contract WmxClaimZap {
         //stake up to given amount of wmx
         if (depositWmxMaxAmount > 0 && _checkOption(options, Options.LockWmx)) {
             uint256 wmxBalance = IERC20(wmx).balanceOf(msg.sender).sub(removeWmxBalance);
+            uint userBal = IERC20(wmx).balanceOf(msg.sender);
+            console.log("user bal: %s", userBal);
+            console.log("remove wmx bal: %s", removeWmxBalance);
             wmxBalance = WmxMath.min(wmxBalance, depositWmxMaxAmount);
+            console.log("wmxBalance: ", wmxBalance);
             if (wmxBalance > 0) {
                 //pull wmx
                 IERC20(wmx).safeTransferFrom(msg.sender, address(this), wmxBalance);

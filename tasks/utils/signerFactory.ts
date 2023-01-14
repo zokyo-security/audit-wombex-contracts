@@ -16,7 +16,7 @@ export const getSigner = async (hre: HardhatRuntime = {}, useCache = true, key?:
             throw Error(`Invalid format of private key`);
         }
         const wallet = new Wallet(pk, hre.ethers.provider);
-        console.log(`Using signer ${await wallet.getAddress()} from private key`);
+        // console.log(`Using signer ${await wallet.getAddress()} from private key`);
         return wallet;
     }
 
@@ -36,19 +36,19 @@ export const getSigner = async (hre: HardhatRuntime = {}, useCache = true, key?:
                 if (!address)
                     throw Error(`Environment variable IMPERSONATE is an invalid Ethereum address or contract name`);
             }
-            console.log(`Impersonating account ${address} from IMPERSONATE environment variable`);
+            // console.log(`Impersonating account ${address} from IMPERSONATE environment variable`);
             signerInstance = await impersonate(address);
             return signerInstance;
         }
         const address = getChainAddress("Deployer", chain);
         if (address) {
-            console.log(`Impersonating account ${address} resolved from "Deployer"`);
+            // console.log(`Impersonating account ${address} resolved from "Deployer"`);
             signerInstance = await impersonate(address);
             return signerInstance;
         }
         // Return a random account with no Ether
         signerInstance = Wallet.createRandom().connect(hre.ethers.provider);
-        console.log(`Impersonating random account ${await signerInstance.getAddress()}`);
+        // console.log(`Impersonating random account ${await signerInstance.getAddress()}`);
         return signerInstance;
     }
 

@@ -35,9 +35,11 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
         address stakingToken_,
         address rewardToken_,
         address operator_,
+        address rewardManager_,
         address lptoken_
-    ) public BaseRewardPool(pid_, stakingToken_, rewardToken_, operator_) {
+    ) public BaseRewardPool(pid_, stakingToken_, rewardToken_, operator_, rewardManager_) {
         asset = lptoken_;
+
         IERC20(asset).safeApprove(operator_, type(uint256).max);
     }
 
@@ -59,6 +61,8 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
         // Convert crvLP to cvxLP through normal booster deposit process, but don't stake
         uint256 balBefore = stakingToken.balanceOf(address(this));
         IDeposit(operator).deposit(pid, assets, false);
+
+
         uint256 balAfter = stakingToken.balanceOf(address(this));
 
         require(balAfter.sub(balBefore) >= assets, "!deposit");
@@ -67,7 +71,10 @@ contract BaseRewardPool4626 is BaseRewardPool, ReentrancyGuard, IERC4626 {
         _processStake(assets, receiver);
 
         emit Deposit(msg.sender, receiver, assets, assets);
+
         emit Staked(receiver, assets);
+
+
         return assets;
     }
 

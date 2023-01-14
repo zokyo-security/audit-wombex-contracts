@@ -7,6 +7,8 @@ import "@openzeppelin/contracts-0.6/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-0.6/utils/Address.sol";
 import "@openzeppelin/contracts-0.6/token/ERC20/SafeERC20.sol";
 
+// import "hardhat/console.sol";
+
 /**
  * @title   VoterProxy
  * @author  ConvexFinance -> WombexFinance
@@ -19,8 +21,9 @@ contract VoterProxy {
     using Address for address;
     using SafeMath for uint256;
 
-    address public immutable wom;
-    address public immutable veWom;
+// changed immutable to  public for wom and veWom
+    address public  wom;
+    address public  veWom;
     address public weth;
 
     address public rewardDeposit;
@@ -38,11 +41,7 @@ contract VoterProxy {
 
     bytes4 constant internal EIP1271_MAGIC_VALUE = 0x1626ba7e;
 
-    event SetOwner(address newOwner);
     event SetGaugeLpTokenPid(address gauge, address lptoken, uint256 pid);
-    event SetRewardDeposit(address withdrawer, address rewardDeposit);
-    event SetDepositor(address depositor);
-    event SetOperator(address operator);
     event Deposit(address lptoken, address gauge, uint256 value);
     event Lock(uint256 amount, uint256 lockDays);
     event ReleaseLock(uint256 amount, uint256 slot);
@@ -79,7 +78,6 @@ contract VoterProxy {
     function setOwner(address _owner) external {
         require(msg.sender == owner, "!auth");
         owner = _owner;
-        emit SetOwner(_owner);
     }
 
     /**
@@ -87,11 +85,20 @@ contract VoterProxy {
      * @param _gauge masterWombat address
      */
     function setLpTokensPid(address _gauge) external {
+
+        // console.log("console.log in set PL");
+
         require(msg.sender == owner, "!auth");
         uint256 poolLength = IMasterWombat(_gauge).poolLength();
 
+        // console.log("console.log in set PL MSG: %s", poolLength);
+        // console.log("console.log in set PL MSG: %s", msg.sender);
+
         for (uint256 i = 0; i < poolLength; i++) {
             (address lpToken, , , , , , ) = IMasterWombat(_gauge).poolInfo(i);
+
+            // console.log("console.log in set PL MSG: %s", lpToken);
+
             lpTokenToPid[_gauge][lpToken] = i;
             if (!lpTokenPidSet[_gauge][lpToken]) {
                 gaugeLpTokens[_gauge].push(lpToken);
@@ -110,7 +117,6 @@ contract VoterProxy {
         require(msg.sender == owner, "!auth");
         withdrawer = _withdrawer;
         rewardDeposit = _rewardDeposit;
-        emit SetRewardDeposit(_withdrawer, _rewardDeposit);
     }
 
     /**
@@ -119,9 +125,9 @@ contract VoterProxy {
      */
     function setOperator(address _operator) external {
         require(msg.sender == owner, "!auth");
+        require(operator == address(0) || IDeposit(operator).isShutdown() == true, "needs shutdown");
 
         operator = _operator;
-        emit SetOperator(_operator);
     }
 
     /**
@@ -132,7 +138,6 @@ contract VoterProxy {
         require(msg.sender == owner, "!auth");
 
         depositor = _depositor;
-        emit SetDepositor(_depositor);
     }
 
     /**
@@ -143,7 +148,13 @@ contract VoterProxy {
      * @param _valid Is the hash valid
      */
     function setVote(bytes32 _hash, bool _valid) external {
+        
+        // console.log("in VoterProxy");
+
         require(msg.sender == operator, "!auth");
+
+        // console.log("in VoterProxy msg sender: %s ", msg.sender);
+
         votes[_hash] = _valid;
         emit VoteSet(_hash, _valid);
     }
@@ -181,6 +192,7 @@ contract VoterProxy {
             protectedTokens[_gauge] = true;
         }
         uint256 balance = IERC20(_lptoken).balanceOf(address(this));
+        // console.log("balance:: %s", balance);
         if (balance > 0) {
             IERC20(_lptoken).safeApprove(_gauge, 0);
             IERC20(_lptoken).safeApprove(_gauge, balance);
@@ -199,6 +211,8 @@ contract VoterProxy {
         require(msg.sender == depositor, "!auth");
 
         uint256 balance = IERC20(wom).balanceOf(address(this));
+
+        // console.log(balance );
         IVeWom(veWom).mint(balance, _lockDays);
 
         emit Lock(balance, _lockDays);
@@ -233,6 +247,8 @@ contract VoterProxy {
         require(protectedTokens[address(_asset)] == false, "protected");
 
         balance = _asset.balanceOf(address(this));
+
+        // console.log("Balance in withdraw: %s",balance);
         _asset.safeApprove(rewardDeposit, 0);
         _asset.safeApprove(rewardDeposit, balance);
         IRewardDeposit(rewardDeposit).addReward(address(_asset), balance);
@@ -248,6 +264,7 @@ contract VoterProxy {
      * @param _amount   Amount of LP token to withdraw
      */
     function withdrawLp(address _lptoken, address _gauge, uint256 _amount) public returns(bool){
+        require(lpTokenPidSet[_gauge][_lptoken], "!lp_token_set");
         require(msg.sender == operator, "!auth");
         _withdrawSomeLp(_lptoken, _gauge, _amount);
         IERC20(_lptoken).safeTransfer(msg.sender, IERC20(_lptoken).balanceOf(address(this)));
@@ -261,6 +278,7 @@ contract VoterProxy {
      * @param _gauge  Gauge for this LP token
      */
     function withdrawAllLp(address _lptoken, address _gauge) external returns(bool){
+        require(lpTokenPidSet[_gauge][_lptoken], "!lp_token_set");
         require(msg.sender == operator, "!auth");
         withdrawLp(_lptoken, _gauge, balanceOfPool(_lptoken, _gauge));
         return true;
@@ -276,41 +294,38 @@ contract VoterProxy {
      * @notice  Claim WOM from Wombat
      * @dev     Claim WOM for LP token staking from the masterWombat contract
      */
-    function claimCrv(address _lptoken, address _gauge) external returns (IERC20[] memory tokens) {
+    function claimCrv(address _gauge, uint256 _pid) external returns (IERC20[] memory tokens, uint256[] memory balances) {
         require(msg.sender == operator, "!auth");
-        require(lpTokenPidSet[_gauge][_lptoken], "!lp_token_set");
-        uint256 pid = lpTokenToPid[_gauge][_lptoken];
 
-        IMasterWombat(_gauge).deposit(pid, 0);
-        tokens = getGaugeRewardTokens(_lptoken, _gauge);
+        IMasterWombat(_gauge).deposit(_pid, 0);
+        (, , IMasterWombatRewarder rewarder, , , , ) = IMasterWombat(_gauge).poolInfo(_pid);
 
-        for (uint256 i = 0; i < tokens.length; i++) {
-            if (address(tokens[i]) == weth) {
-                IWETH(weth).deposit{value: address(this).balance}();
-            }
-            tokens[i].safeTransfer(operator, tokens[i].balanceOf(address(this)));
-        }
-    }
-
-    function getGaugeRewardTokens(address _lptoken, address _gauge) public returns (IERC20[] memory tokens) {
-        require(lpTokenPidSet[_gauge][_lptoken], "!lp_token_set");
-        uint256 pid = lpTokenToPid[_gauge][_lptoken];
-
-        (, , IMasterWombatRewarder rewarder, , , , ) = IMasterWombat(_gauge).poolInfo(pid);
+        // console.log("Rewarder: %s", rewarder);
 
         address[] memory bonusTokenAddresses;
         if (address(rewarder) != address(0)) {
             bonusTokenAddresses = rewarder.rewardTokens();
         }
         tokens = new IERC20[](bonusTokenAddresses.length + 1);
+        balances = new uint256[](bonusTokenAddresses.length + 1);
 
         tokens[0] = IERC20(wom);
+        balances[0] = IERC20(wom).balanceOf(address(this));
+        tokens[0].safeTransfer(operator, balances[0]);
+
         for (uint256 i = 0; i < bonusTokenAddresses.length; i++) {
             IERC20 token = IERC20(bonusTokenAddresses[i]);
             if (address(token) == address(0)) {
                 token = IERC20(weth);
+                IWETH(weth).deposit{value: address(this).balance}();
             }
+            uint256 balance = token.balanceOf(address(this));
+            // console.log(balance);
+            // console.log(token);
+            token.safeTransfer(operator, balance);
+
             tokens[i + 1] = token;
+            balances[i + 1] = balance;
         }
     }
 

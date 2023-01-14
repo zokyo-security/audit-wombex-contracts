@@ -27,23 +27,23 @@ const erc20Abi = [{"constant":true,"inputs":[],"name":"name","outputs":[{"name":
 task("info:wombat").setAction(async function (taskArguments: TaskArguments, hre) {
     const masterWombat = new ethers.Contract('0x620442Ed0c3656260B44688De36832ab4C75bAC4', masterWombatAbi, hre.ethers.provider);
 
-    console.log('wom', await masterWombat.wom());
-    console.log('veWom', await masterWombat.veWom());
-    console.log('womPerSec', await masterWombat.womPerSec().then(pl => pl.toString()));
+    // console.log('wom', await masterWombat.wom());
+    // console.log('veWom', await masterWombat.veWom());
+    // console.log('womPerSec', await masterWombat.womPerSec().then(pl => pl.toString()));
     const poolLength = parseInt(await masterWombat.poolLength().then(pl => pl.toString()));
     for (let i = 0; i < poolLength; i++) {
 
         const poolInfo = await masterWombat.poolInfo(i);
         const lpToken = new ethers.Contract(poolInfo.lpToken, erc20Abi, hre.ethers.provider);
-        console.log(i, 'poolInfo', {
-            lpToken: poolInfo.lpToken,
-            lpTokenSymbol: await lpToken.symbol(),
-            allocPoint: poolInfo.allocPoint.toString(),
-            lastRewardTimestamp: poolInfo.lastRewardTimestamp.toString(),
-            accWomPerShare: poolInfo.accWomPerShare.toString(),
-            sumOfFactors: poolInfo.sumOfFactors.toString(),
-            accWomPerFactorShare: poolInfo.accWomPerFactorShare.toString()
-        });
+        // console.log(i, 'poolInfo', {
+        //     lpToken: poolInfo.lpToken,
+        //     lpTokenSymbol: await lpToken.symbol(),
+        //     allocPoint: poolInfo.allocPoint.toString(),
+        //     lastRewardTimestamp: poolInfo.lastRewardTimestamp.toString(),
+        //     accWomPerShare: poolInfo.accWomPerShare.toString(),
+        //     sumOfFactors: poolInfo.sumOfFactors.toString(),
+        //     accWomPerFactorShare: poolInfo.accWomPerFactorShare.toString()
+        // });
     }
 });
 
@@ -129,22 +129,22 @@ task("info:writeArgs").setAction(async function (taskArguments: TaskArguments, h
 
     const boosterPool = await booster.poolInfo('0');
     const crvRewards = BaseRewardPool4626__factory.connect(boosterPool.crvRewards, hre.ethers.provider);
-    console.log('crvRewards', crvRewards.address);
-    writeArgs('crvRewards', [
-        await crvRewards.pid().then(r => r.toString()),
-        await crvRewards.stakingToken(),
-        await crvRewards.boosterRewardToken(),
-        await crvRewards.operator(),
-        await crvRewards.asset()
-    ]);
+    // console.log('crvRewards', crvRewards.address);
+    // writeArgs('crvRewards', [
+    //     await crvRewards.pid().then(r => r.toString()),
+    //     await crvRewards.stakingToken(),
+    //     await crvRewards.boosterRewardToken(),
+    //     await crvRewards.operator(),
+    //     await crvRewards.asset()
+    // ]);
     const depositToken = DepositToken__factory.connect(boosterPool.token, hre.ethers.provider);
-    console.log('depositToken', depositToken.address);
-    writeArgs('depositToken', [
-        await depositToken.operator(),
-        boosterPool.lptoken,
-        " Wombex Deposit Token",
-        'wmx'
-    ]);
+    // console.log('depositToken', depositToken.address);
+    // writeArgs('depositToken', [
+    //     await depositToken.operator(),
+    //     boosterPool.lptoken,
+    //     " Wombex Deposit Token",
+    //     'wmx'
+    // ]);
 
     const minter = WmxMinter__factory.connect(bnbtConfig.minter, hre.ethers.provider);
     writeArgs('minter', [

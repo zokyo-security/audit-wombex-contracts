@@ -9,7 +9,7 @@ task("timeTravel")
 
         let blocknumber = await ethers.provider.getBlockNumber();
         let block = await ethers.provider.getBlock(blocknumber);
-        console.log("current timestamp:", block.timestamp);
+        // console.log("current timestamp:", block.timestamp);
 
         const rewardDuration = parseInt(taskArgs.duration) || 86400;
 
@@ -19,5 +19,5 @@ task("timeTravel")
 
         blocknumber = await ethers.provider.getBlockNumber();
         block = await ethers.provider.getBlock(blocknumber);
-        console.log("new timestamp:", block.timestamp);
+        // console.log("new timestamp:", block.timestamp);
     });

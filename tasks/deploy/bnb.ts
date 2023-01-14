@@ -50,7 +50,7 @@ task("deploy:bnb").setAction(async function (taskArguments: TaskArguments, hre) 
         gasPrice: ethers.BigNumber.from(5000000000),
     })) as any;
 
-    console.log('deployerAddress', deployerAddress, 'nonce', await hre.ethers.provider.getTransactionCount(deployerAddress), 'blockNumber', await hre.ethers.provider.getBlockNumber());
+    // console.log('deployerAddress', deployerAddress, 'nonce', await hre.ethers.provider.getTransactionCount(deployerAddress), 'blockNumber', await hre.ethers.provider.getBlockNumber());
     const bnbtConfig = JSON.parse(fs.readFileSync('./bnb.json', {encoding: 'utf8'}));
 
     const weth = WETH__factory.connect(wbnb, deployer);
@@ -69,12 +69,12 @@ task("deploy:bnb").setAction(async function (taskArguments: TaskArguments, hre) 
         true,
         waitForBlocks,
     );
-    console.log('voterProxy', voterProxy.address);
+    // console.log('voterProxy', voterProxy.address);
 
     bnbtConfig.voterProxy = voterProxy.address;
     fs.writeFileSync('./bnb.json', JSON.stringify(bnbtConfig), {encoding: 'utf8'});
 
-    console.log('deployFirstStage');
+    // console.log('deployFirstStage');
     const contracts = await deployFirstStage(
         hre,
         deployer,
@@ -118,7 +118,7 @@ task("bnb:all-distro-tokens").setAction(async function (taskArguments: TaskArgum
     const masterWombat = MasterWombatV2__factory.connect(bnbtConfig.masterWombat, deployer);
 
     const wbnb = '0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c';
-    console.log('wom', bnbtConfig.wom, {cvxCrvRewards: bnbtConfig.cvxCrvRewards, cvxStakingProxy: bnbtConfig.cvxStakingProxy});
+    // console.log('wom', bnbtConfig.wom, {cvxCrvRewards: bnbtConfig.cvxCrvRewards, cvxStakingProxy: bnbtConfig.cvxStakingProxy});
 
     let bonusRewardTokens = [];
     const poolLength = await masterWombat.poolLength().then(l => parseInt(l.toString()));

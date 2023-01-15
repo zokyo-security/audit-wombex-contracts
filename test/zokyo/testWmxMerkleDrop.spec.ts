@@ -52,8 +52,11 @@ describe("WmxRewardPool", () => {
         accounts = await ethers.getSigners();
         deployer = accounts[0];
         const mocks = await deployTestFirstStage(hre, deployer);
+        
         const multisigs = await getMockMultisigs(accounts[0], accounts[0], accounts[0]);
+        
         distro = getMockDistro();
+        
         contracts = await deploy(hre, deployer, accounts[0], mocks, distro, multisigs, mocks.namingConfig, mocks);
 
         deployerAddress = await deployer.getAddress();
@@ -78,6 +81,7 @@ describe("WmxRewardPool", () => {
         await contracts.cvx.connect(operatorAccount.signer).transfer(deployerAddress, simpleToExactAmount(1000));
 
         deployTime = await getTimestamp();
+
     }); 
     
     describe ( "Operation without exceptions: " , async function () {

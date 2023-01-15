@@ -31,12 +31,7 @@ module.exports = {
         "mocks/MultiRewarderPerSec.sol",
         "mocks/VeWom.sol",
         "mocks/WETH.sol",
-        "WmxLocker.sol",
-        "WmxMerkleDrop.sol",
-        "WmxMinter.sol",
-        "WmxPenaltyForwarder.sol",
         "WmxRewardPool.sol",
-        "WmxVestedEscrow.sol",
         "PoolDepositor.sol",
         "WmxVestedEscrowLockOnly.sol",
         "vendor/mocks/"

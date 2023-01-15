@@ -471,7 +471,7 @@ async function deployFirstStage(
         hre,
         new BaseRewardPool__factory(deployer),
         "BaseRewardPool",
-        [0, cvxCrv.address, token, booster.address],
+        [0, cvxCrv.address, token, booster.address, token],
         {},
         debug,
         waitForBlocks,

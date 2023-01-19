@@ -64,9 +64,9 @@ describe("WmxVestedEscrow", () => {
         wmx = contracts.cvx.connect(deployer) as ERC20;
         wmxLocker = contracts.cvxLocker.connect(deployer);
         deployTime = await getTimestamp();
-        console.log("wmx", wmx.address);
-        console.log("wmx", wmxLocker.address);
-        const vestedEscrowFactory = await ethers.getContractFactory("WmxVestedEscrow");
+        // console.log("wmx", wmx.address);
+        // console.log("wmx", wmxLocker.address);
+        const vestedEscrowFactory = await smock.mock("WmxVestedEscrow");
         vestedEscrow = await vestedEscrowFactory.deploy(
             wmx.address,
             fundAdminAddress,
@@ -204,16 +204,80 @@ describe("WmxVestedEscrow", () => {
             await expect(tx).to.be.revertedWith("!auth");
         });
         
-        it.skip("#fund - Possible DOS due to arrays of too long length", async () => {
-            const recipients = [], amount = [];
-            let totalAmount = 100 * 10000;
-            new Array(10000).fill(null).forEach(() => {
-                recipients.push(aliceAddress);
-                amount.push(simpleToExactAmount(100));
-            });
+    })
 
-            await wmx.approve(vestedEscrow.address, simpleToExactAmount(totalAmount));
-            await expect(vestedEscrow.fund(recipients, amount)).to.be.eventually.rejectedWith("gas limit");
+    describe("setAdmin", async () => {
+        it("setAdmin", async () => {
+            await expect(vestedEscrow.connect(bob).setAdmin(bobAddress)).to.be.revertedWith('!auth')
+        })
+    })
+
+    describe("cancel", async () => {
+        it("cancel", async () => {
+            await vestedEscrow.setVariable("admin", fundAdmin.address);
+            await expect(vestedEscrow.connect(fundAdmin).cancel(bobAddress)).to.be.revertedWith("!funding")
         });
+
+    })
+
+    describe("fund", async () => {
+        it("fund", async () => {
+            await expect(
+                vestedEscrow.fund([], [100])
+            ).to.be.revertedWith("!arr");
+        });
+
+        it("fund", async () => {
+            await vestedEscrow.setVariable("initialised", false);
+            await expect(
+                vestedEscrow.connect(bob).fund([aliceAddress], [100])
+            ).to.be.revertedWith("!funder");
+        })
+
+        it("fund", async () => {
+            await vestedEscrow.setVariable("initialised", true);
+            await expect(
+                vestedEscrow.fund([aliceAddress], [100])
+            ).to.be.revertedWith("initialised already");
+        });
+    })
+
+    describe("", async () => {
+        it("", async () => {
+    
+                let fakeWmx = await smock.fake("Wmx")
+                let fakeWmxLocker = await smock.fake("WmxLocker")
+                let newDeployTime = await getTimestamp();
+
+                const VestedEscrowFactory = await smock.mock("WmxVestedEscrow");
+
+                await expect(VestedEscrowFactory.deploy(
+                    fakeWmx.address,
+                    fundAdminAddress,
+                    fakeWmxLocker.address,
+                    newDeployTime.sub(ONE_WEEK),
+                    newDeployTime.add(ONE_WEEK.mul(53)),
+                )
+            ).to.be.revertedWith("start must be future");
+
+            await expect(VestedEscrowFactory.deploy(
+                fakeWmx.address,
+                fundAdminAddress,
+                fakeWmxLocker.address,
+                newDeployTime.add(ONE_WEEK),
+                newDeployTime.add(ONE_WEEK),
+            )
+        ).to.be.revertedWith("end must be greater");
+
+        await expect(
+                VestedEscrowFactory.deploy(
+                fakeWmx.address,
+                fundAdminAddress,
+                fakeWmxLocker.address,
+                newDeployTime.add(ONE_WEEK),
+                newDeployTime.add(ONE_WEEK.mul(2)),
+            )
+        ).to.be.revertedWith("!short");
+        })
     })
 });

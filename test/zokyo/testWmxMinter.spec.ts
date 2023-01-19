@@ -14,7 +14,7 @@ import { DEAD_ADDRESS, ONE_WEEK } from "../../test-utils/constants";
 
 chai.should();
 
-describe("WmxRewardPool", () => {
+describe("WmxMinter", () => {
     let accounts: Signer[];
 
     let contracts: SystemDeployed;

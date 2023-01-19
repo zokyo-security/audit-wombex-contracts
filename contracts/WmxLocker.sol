@@ -7,6 +7,7 @@ import { Ownable } from "@openzeppelin/contracts-0.8/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts-0.8/security/ReentrancyGuard.sol";
 import {WmxMath, WmxMath32, WmxMath112, WmxMath224} from "./WmxMath.sol";
 import "./Interfaces.sol";
+import "hardhat/console.sol";
 
 interface IRewardStaking {
     function stakeFor(address, uint256) external;
@@ -420,6 +421,8 @@ contract WmxLocker is ReentrancyGuard, Ownable, IWmxLocker {
         address _rewardAddress,
         uint256 _checkDelay
     ) internal updateReward(_account) {
+
+        console.log("check delay: %S", _checkDelay);
         LockedBalance[] storage locks = userLocks[_account];
         Balances storage userBalance = balances[_account];
         uint112 locked;
@@ -428,6 +431,8 @@ contract WmxLocker is ReentrancyGuard, Ownable, IWmxLocker {
         uint256 expiryTime = _checkDelay == 0 && _relock
             ? block.timestamp.add(rewardsDuration)
             : block.timestamp.sub(_checkDelay);
+
+        console.log("expiry time: %s", expiryTime);
         require(length > 0, "no locks");
         // e.g. now = 16
         // if contract is shutdown OR latest lock unlock time (e.g. 17) <= now - (1)
@@ -444,10 +449,17 @@ contract WmxLocker is ReentrancyGuard, Ownable, IWmxLocker {
             //but this section is supposed to be for quick and easy low gas processing of all locks
             //we'll assume that if the reward was good enough someone would have processed at an earlier epoch
             if (_checkDelay > 0) {
+
                 uint256 currentEpoch = block.timestamp.sub(_checkDelay).div(rewardsDuration).mul(rewardsDuration);
+                console.log("current: %s", currentEpoch);
+                console.log("unlock: %s", uint256(locks[length - 1].unlockTime));
+
                 uint256 epochsover = currentEpoch.sub(uint256(locks[length - 1].unlockTime)).div(rewardsDuration);
+                console.log("epochsover: %s", epochsover);
                 uint256 rRate = WmxMath.min(kickRewardPerEpoch.mul(epochsover + 1), denominator);
+                console.log("rRate: %s", rRate);
                 reward = uint256(locked).mul(rRate).div(denominator);
+                console.log("reward: %s", reward);
             }
         } else {
             //use a processed index(nextUnlockIndex) to not loop as much

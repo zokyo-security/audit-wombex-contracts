@@ -89,8 +89,11 @@ describe("BasePoolReward", async () => {
     
             await fakestakingToken.approve(baseRewardPool.address, 2000);
             
+            await expect(baseRewardPool.stakeFor(tester1.address, 0)).to.be.revertedWith('RewardPool : Cannot stake 0');
+
             await expect(baseRewardPool.stakeFor(tester1.address, 2000)).to.emit(baseRewardPool, "Staked")
                 .withArgs(owner.address,2000);
+
 
         });
     });
@@ -110,7 +113,24 @@ describe("BasePoolReward", async () => {
             await expect(baseRewardPool.withdraw(2000, false)).to.emit(baseRewardPool, "Withdrawn")
                 .withArgs(owner.address, 2000);
 
-        })
+        });
+
+        it("withdraws tokens staked", async () => {
+            
+            let balance = await fakestakingToken.balanceOf(owner.address)
+            
+            await fakestakingToken.approve(baseRewardPool.address, balance);
+            await baseRewardPool.stakeFor(tester1.address, 2000);
+            await baseRewardPool.stakeFor(tester2.address, 2000);
+
+            await baseRewardPool.stakeFor(tester1.address, 2000);
+            await baseRewardPool.stakeFor(tester2.address, 2000);
+
+            await expect(
+                baseRewardPool.withdraw(0, false)
+            ).to.be.revertedWith("RewardPool : Cannot withdraw 0")
+
+        });
 
         it("withdraws token staked on callers behalf", async () => {
             
@@ -126,7 +146,7 @@ describe("BasePoolReward", async () => {
             await expect(baseRewardPool.withdraw(2000, true)).to.emit(baseRewardPool, "Withdrawn")
                 .withArgs(owner.address, 2000);
 
-        })
+        });
     });
 
     describe("withdrawAll()", async () => {
@@ -156,9 +176,21 @@ describe("BasePoolReward", async () => {
             await expect(baseRewardPool.stakeAll()).to.emit(baseRewardPool, "Staked")
                 .withArgs(owner.address,balance);
             
+            // await baseRewardPool.withdrawAndUnwrap(balance, true)
             await baseRewardPool.withdrawAndUnwrap(balance, true)
             
-        })
+        });
+
+        it("withdraw and Unwraps specified token amount", async () => {
+            let balance = await fakestakingToken.balanceOf(owner.address)
+            await fakestakingToken.approve(baseRewardPool.address, balance);
+
+            await expect(baseRewardPool.stakeAll()).to.emit(baseRewardPool, "Staked")
+                .withArgs(owner.address,balance);
+            
+            await baseRewardPool.withdrawAndUnwrap(balance, true)
+            
+        });
     });
 
     describe("withdrawAllAndUnwrap()", async () => {
@@ -299,6 +331,60 @@ describe("BasePoolReward", async () => {
 
             await baseRewardPool.connect(booster.wallet).queueNewRewards(anotherToken.address, balance);
             await baseRewardPool.connect(booster.wallet).queueNewRewards(boosterRewardToken.address, balance);
+            
+            await fastForward(10000000)
+
+            await baseRewardPool.connect(booster.wallet)['getReward(address,bool)'](owner.address,false);
+               
+        });
+
+        it("queueNewRewards", async () => {
+
+            let balance = await fakestakingToken.balanceOf(owner.address)
+            await fakestakingToken.approve(baseRewardPool.address, balance);
+
+            
+            await baseRewardPool.stakeAll()
+
+            await fastForward(10000000)
+            
+            await baseRewardPool.connect(owner)['getReward()']();
+
+            await owner.sendTransaction({
+                to: booster.address,
+                value: ethers.utils.parseEther("5.0")
+            });
+
+            const MockERC20 = await hre.ethers.getContractFactory("MockERC20");
+
+            const anotherToken = await MockERC20.deploy(
+                    "Another Token 1",
+                    "ANOTHER",
+                    9,
+                    owner.address,
+                    "1000000000000"
+            )
+
+            const differentToken = await MockERC20.deploy(
+                "Different Token 1",
+                "Diff",
+                9,
+                owner.address,
+                "1000000000000"
+        )
+
+            balance = await boosterRewardToken.balanceOf(owner.address)
+
+            await boosterRewardToken.transfer(booster.address, balance)
+            await anotherToken.transfer(booster.address, balance)
+            
+            await boosterRewardToken.connect(booster.wallet).approve(baseRewardPool.address, balance);
+            await anotherToken.connect(booster.wallet).approve(baseRewardPool.address, balance);
+
+            await expect(
+                baseRewardPool.queueNewRewards(anotherToken.address, balance)
+            ).to.be.revertedWith("!authorized");
+            // await baseRewardPool.connect(booster.wallet).queueNewRewards(boosterRewardToken.address, balance);
             
             await fastForward(10000000)
 

@@ -20,7 +20,7 @@ chai.should();
 chai.use(smock.matchers);
 chai.use(chaiAsPromised);
 
-describe("WmxRewardPool", () => {
+describe("WmxMerkleDrop", () => {
     let accounts: Signer[];
 
     let contracts;
@@ -52,11 +52,8 @@ describe("WmxRewardPool", () => {
         accounts = await ethers.getSigners();
         deployer = accounts[0];
         const mocks = await deployTestFirstStage(hre, deployer);
-        
         const multisigs = await getMockMultisigs(accounts[0], accounts[0], accounts[0]);
-        
         distro = getMockDistro();
-        
         contracts = await deploy(hre, deployer, accounts[0], mocks, distro, multisigs, mocks.namingConfig, mocks);
 
         deployerAddress = await deployer.getAddress();
@@ -81,7 +78,6 @@ describe("WmxRewardPool", () => {
         await contracts.cvx.connect(operatorAccount.signer).transfer(deployerAddress, simpleToExactAmount(1000));
 
         deployTime = await getTimestamp();
-
     }); 
     
     describe ( "Operation without exceptions: " , async function () {
@@ -92,7 +88,7 @@ describe("WmxRewardPool", () => {
                 [aliceAddress]: amount,
                 [bobAddress]: amount,
             });
-            const merkleDropFactory = await ethers.getContractFactory("WmxMerkleDrop");
+            const merkleDropFactory = await smock.mock("WmxMerkleDrop");
 
             merkleDrop = await merkleDropFactory.deploy(
                 adminAddress,
@@ -301,4 +297,180 @@ describe("WmxRewardPool", () => {
             await expect(tx2).to.be.revertedWith("non-contract account");
         });
     })
+
+
+    describe("", async () => {
+
+        let tree, dropAmount, amount;
+        beforeEach(async () => {
+
+            dropAmount = simpleToExactAmount(200);
+            amount = simpleToExactAmount(100);
+            tree = createTreeWithAccounts({
+                [aliceAddress]: amount,
+                [bobAddress]: amount,
+            });
+        })
+        
+
+        it("", async () => {
+
+            const  MerkleDropFactory = await ethers.getContractFactory("WmxMerkleDrop");
+            await expect( MerkleDropFactory.deploy(
+                ethers.constants.AddressZero,
+                tree.getHexRoot(),
+                wmx.address,
+                wmxLocker.address,
+                ONE_WEEK,
+                ONE_WEEK.mul(16),
+            )).to.be.revertedWith("!dao")
+        });
+
+        it("", async () => {
+
+            const  MerkleDropFactory = await ethers.getContractFactory("WmxMerkleDrop");
+            await expect( MerkleDropFactory.deploy(
+                adminAddress,
+                tree.getHexRoot(),
+                ethers.constants.AddressZero,
+                wmxLocker.address,
+                ONE_WEEK,
+                ONE_WEEK.mul(16),
+            )).to.be.revertedWith( "!wmx")
+        });
+
+        it("", async () => {
+            const  MerkleDropFactory = await ethers.getContractFactory("WmxMerkleDrop");
+            await expect( MerkleDropFactory.deploy(
+                adminAddress,
+                tree.getHexRoot(),
+                wmx.address,
+                wmxLocker.address,
+                ONE_WEEK,
+                ONE_WEEK,
+            )).to.be.revertedWith( "!expiry")
+        })
+    })
+
+    describe("setDao", async () => {
+
+        it("setDao", async () => {
+            await expect(merkleDrop.connect(bob).setDao(bobAddress)).to.be.revertedWith("!auth")
+        })
+    });
+
+    describe("setRoot", async () => {
+
+        it("setRoot", async () => {
+            await expect(merkleDrop.connect(admin).setRoot(tree.getHexRoot())).to.be.revertedWith("already set")
+        })
+    });
+
+    describe("startEarly", async () => {
+
+        it("startEarly", async () => {
+            await expect(merkleDrop.connect(bob).startEarly()).to.be.revertedWith("!auth")
+        })
+    });
+
+    describe("withdrawExpired", async () => {
+
+        it("withdrawExpired", async () => {
+            await expect(merkleDrop.connect(bob).withdrawExpired()).to.be.revertedWith("!auth")
+        })
+    })
+
+    describe("setLocker", async () => {
+
+        it("setLocker", async () => {
+            let fakeLocker = await smock.fake("WmxLocker");
+            await expect(merkleDrop.connect(bob).setLocker(fakeLocker.address)).to.be.revertedWith("!auth")
+        })
+    })
+
+    describe("rescueReward", async () => {
+
+        it("rescueReward", async () => {
+            await expect(merkleDrop.connect(bob).rescueReward()).to.be.revertedWith("!auth")
+        })
+    });
+
+    describe("claim", async () => {
+
+        it("claim", async () => {
+            await expect(merkleDrop.claim([ethers.constants.HashZero], 0)).to.be.revertedWith('!amount')
+        })
+    });
+
+    describe("claim", async () => {
+
+        let merkleDrop2, tree, dropAmount, amount;
+        beforeEach(async () => {
+
+            dropAmount = simpleToExactAmount(200);
+            amount = simpleToExactAmount(100);
+            tree = createTreeWithAccounts({
+                [aliceAddress]: amount,
+                [bobAddress]: amount,
+            });
+
+            const merkleDropFactory2 = await smock.mock("WmxMerkleDrop");
+
+            merkleDrop2 = await merkleDropFactory2.deploy(
+                adminAddress,
+                tree.getHexRoot(),
+                wmx.address,
+                wmxLocker.address,
+                0,
+                ONE_WEEK.mul(16),
+            );
+        })
+
+        it("claim", async () => {
+            await merkleDrop2.setVariable("merkleRoot", ethers.constants.HashZero )
+
+            await expect(merkleDrop2.connect(bob).claim([ethers.constants.HashZero], 100)).to.be.revertedWith("!root")
+        })
+
+        it("claim", async () => {
+            await merkleDrop2.setVariable("hasClaimed", {
+                [bobAddress]: true
+            } )
+
+            await expect(merkleDrop2.connect(bob).claim([ethers.constants.HashZero], 100)).to.be.revertedWith("already claimed")
+        })
+    })
+
+
+    describe("claim", async () => {
+
+        let merkleDrop2, tree, dropAmount, amount;
+        beforeEach(async () => {
+
+            dropAmount = simpleToExactAmount(200);
+            amount = simpleToExactAmount(100);
+            tree = createTreeWithAccounts({
+                [aliceAddress]: amount,
+                [bobAddress]: amount,
+            });
+
+            const merkleDropFactory2 = await smock.mock("WmxMerkleDrop");
+
+            merkleDrop2 = await merkleDropFactory2.deploy(
+                adminAddress,
+                tree.getHexRoot(),
+                wmx.address,
+                wmxLocker.address,
+                ONE_WEEK.mul(15),
+                ONE_WEEK.mul(16),
+            );
+        })
+
+        it("claim", async () => {
+            // await merkleDrop2.setVariable("merkleRoot", ethers.constants.HashZero )
+
+            await expect(merkleDrop2.connect(bob).claim([ethers.constants.HashZero], 100)).to.be.revertedWith("!started")
+        })
+    })
 })
+  

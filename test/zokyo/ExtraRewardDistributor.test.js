@@ -34,7 +34,7 @@ let IERC20 = new ethers.utils.Interface([
 
         ]);
 
-describe("ExtraReward", async () => {
+describe("ExtraRewardDistributor", async () => {
 
     let owner, tester1, tester2, extraRewardDistributor, fakeWmxLocker;
 

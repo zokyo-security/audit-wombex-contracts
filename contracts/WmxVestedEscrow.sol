@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts-0.8/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts-0.8/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts-0.8/security/ReentrancyGuard.sol";
 import {WmxMath} from "./WmxMath.sol";
+import "hardhat/console.sol";
 
 /**
  * @title   WmxVestedEscrow
@@ -123,6 +124,9 @@ contract WmxVestedEscrow is ReentrancyGuard {
      * @param _recipient Recipient address
      */
     function cancel(address _recipient) external nonReentrant {
+
+        console.log(msg.sender);
+        console.log(admin);
         require(msg.sender == admin, "!auth");
         require(totalLocked[_recipient] > 0, "!funding");
 

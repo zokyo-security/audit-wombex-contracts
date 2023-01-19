@@ -1,4 +1,5 @@
 import { MockContract, smock } from "@defi-wonderland/smock";
+import { constants } from "buffer";
 import chai, { expect } from "chai";
 import chaiAsPromised from "chai-as-promised";
 import { ContractTransaction, Signer } from "ethers";
@@ -65,30 +66,26 @@ interface SnapshotData {
     epochs: Array<{ supply: BN; date: number }>;
 }
 
-// TODO -
-// - [x] @WmxLocker.approveRewardDistributor
-// - [x] @WmxLocker.setKickIncentive
-// - [x] @WmxLocker.shutdown
-// - [x] @WmxLocker.recoverERC20
-// - [ ] @WmxLocker.getReward when _rewardsToken == cvxCrv && _stake
-// - [ ] @WmxLocker._processExpiredLocks  when if (_checkDelay > 0)
-// - [x] @WmxLocker.getPastTotalSupply
-// - [ ] @WmxLocker.balanceOf when locks[i].unlockTime <= block.timestamp
-// - [x] @WmxLocker.lockedBalances
-// - [ ] @WmxLocker.totalSupply
-// - [ ] @WmxLocker.totalSupplyAtEpoch
-// - [x] @WmxLocker.findEpochId
-// - [x] @WmxLocker.epochCount
-// - [x] @WmxLocker.decimals()
-// - [x] @WmxLocker.name()
-// - [x] @WmxLocker.symbol()
-// - [x] @WmxLocker.claimableRewards
-// - [ ] @WmxLocker.queueNewRewards when NOT if(block.timestamp >= rdata.periodFinish)
-// - [ ] @WmxLocker.notifyRewardAmount when NOT if (block.timestamp >= rdata.periodFinish)
-// - [ ] Reward.rewardPerTokenStored changed from uint208=>uint96 , verify overflows
+
 chai.should();
 chai.use(smock.matchers);
 chai.use(chaiAsPromised);
+
+
+const IERC20 = new ethers.utils.Interface([
+    "function safeTransfer(address token, address to, uint256 value) external returns(bool)",
+    "function safeTransferFrom(address, address from, address to, uint256 value) external returns(bool)",
+    "function safeApprove(address, address spender, uint256 value) external returns(bool)",
+    "function safeIncreaseAllowance(address, address spender, uint256 value) external returns(bool)",
+    "function safeDecreaseAllowance(address, address spender, uint256 value) external returns(bool)",
+    "function totalSupply() external view returns (uint256)",
+    "function transfer(address recipient, uint256 amount) external returns (bool)",
+    "function mint(address recipient, uint256 amount) external returns (bool)",
+    "function allowance(address owner, address spender) external view returns (uint256)",
+    "function approve(address spender, uint256 amount) external returns (bool)",
+    "function lock(address recipient, uint256 amount) external returns (bool)",
+    "function transferFrom(address sender, address recipient, uint256 amount) external returns (bool)",
+]);
 
 describe("WmxLocker", () => {
     let accounts: Signer[];
@@ -820,4 +817,544 @@ describe("WmxLocker", () => {
             await expect(tx).revertedWith("shutdown");
         }); 
     });
+
+
+    describe("", async () => {
+
+        let IRewardStaking = new ethers.utils.Interface([
+            "function stakeFor(address, uint256) external"
+        ])
+
+        let stakingToken, womWmx, wmxWomStaking, mockedWmxLocker, accounts;
+
+        beforeEach(async () => {
+
+            accounts = await ethers.getSigners();
+
+            stakingToken = await smock.fake({interface: IERC20});
+            womWmx = await smock.fake({interface: IERC20});
+            wmxWomStaking = await smock.fake({interface: IRewardStaking})
+
+            const WmxLocker = await smock.mock("WmxLocker");
+            mockedWmxLocker = await WmxLocker.deploy(
+                "Test token",
+                "TTT",
+                stakingToken.address,
+                womWmx.address,
+                wmxWomStaking.address
+            )
+        })
+
+        it("kickExpiredLocks()", async () => {
+
+            stakingToken.safeTransfer.returns();
+            womWmx.safeTransfer.returns();
+
+            await mockedWmxLocker.setVariable("isShutdown", true)
+            await mockedWmxLocker.setVariable("lockedSupply", "10000000000")
+
+            const unlockTime = await (await getTimestamp()).sub(ONE_WEEK);
+
+            await mockedWmxLocker.setVariable("userLocks", {
+                [accounts[2].address]: [{amount: 1000, unlockTime: "100000"}]
+            })
+
+            await mockedWmxLocker.setVariable("balances", {
+                [accounts[2].address]: {locked: 1000, nextUnlockIndex: 1}
+            });
+
+            await expect(mockedWmxLocker.kickExpiredLocks(accounts[2].address)).to.be.reverted;
+        });
+
+        it("kickExpiredLocks()", async () => {
+            stakingToken.safeTransfer.returns();
+            womWmx.safeTransfer.returns(true);
+
+            
+            const unlockTime = await (await getTimestamp()).add(ONE_DAY);
+
+            await mockedWmxLocker.setVariable("userLocks", {
+                [accounts[2].address]: [{amount: 1000, unlockTime: unlockTime}]
+            })
+
+            await mockedWmxLocker.setVariable("balances", {
+                [accounts[2].address]: {locked: 1000, nextUnlockIndex: 0}
+            })
+
+            await expect(mockedWmxLocker.kickExpiredLocks(accounts[2].address)).to.be.revertedWith("no exp locks")
+        });
+
+        it("processExpiredLocks()", async () => {
+
+            const unlockTime = await (await getTimestamp()).add(ONE_DAY);
+
+            await mockedWmxLocker.setVariable("userLocks", {
+                [accounts[2].address]: [{amount: 1000, unlockTime: unlockTime}]
+            })
+
+            await mockedWmxLocker.setVariable("lockedSupply", "10000000000")
+
+            await mockedWmxLocker.setVariable("balances", {
+                [accounts[2].address]: {locked: 1000, nextUnlockIndex: 0}
+            })
+
+            await expect(mockedWmxLocker.connect(accounts[2]).processExpiredLocks(false)).to.be.revertedWith("no exp locks")
+        })
+
+
+        it("processExpiredLocks()", async () => {
+            stakingToken.safeTransfer.returns();
+            womWmx.safeTransfer.returns(true);
+
+
+            await mockedWmxLocker.setVariable("isShutdown", true)
+            const unlockTime = await (await getTimestamp()).add(ONE_DAY);
+
+            await mockedWmxLocker.setVariable("userLocks", {
+                [accounts[2].address]: [{amount: 1000, unlockTime: unlockTime}]
+            })
+
+            await mockedWmxLocker.setVariable("lockedSupply", "10000000000")
+
+            await mockedWmxLocker.setVariable("balances", {
+                [accounts[2].address]: {locked: 1000, nextUnlockIndex: 0}
+            })
+
+            await expect(
+                mockedWmxLocker.connect(accounts[2]).processExpiredLocks(false)).to.be.reverted;
+            
+        });
+
+
+        // it("processExpiredLocks", async () => {
+        //     // stakingToken.safeTransfer.returns();
+        //     // womWmx.safeTransfer.returns(true);
+
+
+        //     // await mockedWmxLocker.setVariable("isShutdown", false)
+        //     const unlockTime = await (await getTimestamp()).add(ONE_YEAR);
+
+        //     await mockedWmxLocker.setVariable("userLocks", {
+        //         [accounts[2].address]: [{amount: 1000, unlockTime: unlockTime}]
+        //     })
+
+        //     await mockedWmxLocker.setVariable("lockedSupply", "10000000000")
+
+        //     await mockedWmxLocker.setVariable("balances", {
+        //         [accounts[2].address]: {locked: 1000, nextUnlockIndex: 0}
+        //     })
+
+        //     await mockedWmxLocker.connect(accounts[2]).kickExpiredLocks(accounts[2].address);
+        // });
+
+        it("processExpiredLocks()", async () => {
+
+            stakingToken.safeTransfer.returns();
+            womWmx.safeTransfer.returns(true);
+
+            // await mockedWmxLocker.setVariable("isShutdown", true)
+            const unlockTime = await (await getTimestamp()).add(ONE_DAY);
+
+            await mockedWmxLocker.setVariable("userLocks", {
+                [accounts[2].address]: [{amount: 1000, unlockTime: unlockTime}]
+            })
+
+            await mockedWmxLocker.setVariable("lockedSupply", "10000000000")
+
+            await mockedWmxLocker.setVariable("balances", {
+                [accounts[2].address]: {locked: 1000, nextUnlockIndex: 0}
+            })
+
+            await mockedWmxLocker.connect(accounts[2]).processExpiredLocks(true)
+            
+        });
+
+
+        it("processExpiredLocks()", async () => {
+
+            stakingToken.safeTransfer.returns();
+            womWmx.safeTransfer.returns(true);
+
+            // await mockedWmxLocker.setVariable("isShutdown", true)
+            const unlockTime = await (await getTimestamp()).add(ONE_DAY);
+
+            await mockedWmxLocker.setVariable("userLocks", {
+                [accounts[2].address]: [{amount: 1000, unlockTime: unlockTime}]
+            })
+
+            await mockedWmxLocker.setVariable("lockedSupply", "10000000000")
+
+            await mockedWmxLocker.setVariable("balances", {
+                [accounts[2].address]: {locked: 1000, nextUnlockIndex: 0}
+            })
+
+            await expect(
+                mockedWmxLocker.connect(accounts[2]).kickExpiredLocks(accounts[2].address)
+            ).to.be.revertedWith('no exp locks')
+        });
+        
+
+        describe("userLocksLen()", async () => {
+            it("userLocksLen", async () => {
+                
+                const unlockTime = await (await getTimestamp()).add(ONE_DAY);
+    
+                await mockedWmxLocker.setVariable("userLocks", {
+                    [accounts[2].address]: [{amount: 1000, unlockTime: unlockTime}]
+                })
+    
+    
+                let locksLen = await mockedWmxLocker.userLocksLen(accounts[2].address);
+
+                console.log(locksLen);
+            });
+
+            it("rewardTokensList()", async () => {
+                
+                const unlockTime = await (await getTimestamp()).add(ONE_DAY);
+    
+                await mockedWmxLocker.setVariable("userLocks", {
+                    [accounts[2].address]: [{amount: 1000, unlockTime: unlockTime}]
+                })
+    
+    
+                let rewardTokensList = await mockedWmxLocker.rewardTokensList();
+
+                console.log(rewardTokensList);
+            });
+
+            it("getPastTotalSupply()", async () => {
+                
+                const unlockTime = await (await getTimestamp()).sub(ONE_DAY);
+    
+                await mockedWmxLocker.setVariable("userLocks", {
+                    [accounts[2].address]: [{amount: 1000, unlockTime: unlockTime}]
+                })
+    
+    
+                let totalSupply = await mockedWmxLocker.getPastTotalSupply(unlockTime);
+
+                console.log(totalSupply);
+            });
+
+            
+        });
+
+        describe("lockedBalances()", async () => {
+            it("lockedBalances", async () => {
+                
+                const unlockTime = await (await getTimestamp()).add(ONE_DAY);
+    
+                await mockedWmxLocker.setVariable("userLocks", {
+                    [accounts[2].address]: [{amount: 1000, unlockTime: unlockTime}]
+                })
+                
+                const lockedBal = await mockedWmxLocker.lockedBalances(accounts[2].address);
+                console.log(lockedBal)
+            });
+        })
+
+
+        describe("delegate()", async () => {
+            it("delegate", async () => {
+                
+                // let testToken = await smock.fake({interface: IERC20});
+                await expect(mockedWmxLocker.delegate(accounts[3].address)).to.be.revertedWith("Nothing to delegate");
+
+                const unlockTime = await (await getTimestamp()).add(ONE_DAY);
+
+                await mockedWmxLocker.setVariable("userLocks", {
+                    [accounts[2].address]: [{amount: 1000, unlockTime: unlockTime}]
+                });
+
+                await expect(
+                    mockedWmxLocker.connect(accounts[2]).delegate(ethers.constants.AddressZero)
+                ).to.be.revertedWith("Must delegate to someone");
+
+
+                await mockedWmxLocker.setVariable("_delegates", {
+                   [ accounts[2].address]: accounts[3].address
+                } )
+                await expect(
+                    mockedWmxLocker.connect(accounts[2]).delegate(accounts[3].address)
+                ).to.be.revertedWith("Must choose new delegatee");
+
+            });
+        })
+
+        // describe("getPastVotes()", async () => {
+        //     it.only("getPastVotes", async () => {
+                
+        //         const unlockTime = await (await getTimestamp()).sub(ONE_WEEK);
+
+        //         await expect(
+        //             mockedWmxLocker.getPastVotes(accounts[2].address, unlockTime)
+        //         ).to.be.revertedWith("ERC20Votes: block not yet mined");
+                
+        //     });
+
+        // });
+
+        describe("getPastVotes()", async () => {
+            it("getPastVotes", async () => {
+                
+                const unlockTime = await getTimestamp();
+                let t = unlockTime.add(ONE_WEEK)
+
+                await expect(
+                    mockedWmxLocker.getPastVotes(accounts[1].address,t)
+                ).to.be.revertedWith("ERC20Votes: block not yet mined");
+                
+            });
+        });
+
+        describe("addReward()", async () => {
+            it("addReward", async () => {
+                
+                const rewardToken = await smock.fake({interface: IERC20});
+
+                await mockedWmxLocker.setVariable("rewardData", {
+                    [rewardToken.address]: {
+                        periodFinish: 1000000,
+                        lastUpdateTime:1000000 ,
+                        rewardRate: 10,
+                        rewardPerTokenStored: 10
+                    }
+                })
+
+                await expect(
+                     mockedWmxLocker.addReward(rewardToken.address, accounts[1].address)
+                ).to.be.revertedWith("Reward already exists");
+
+                // Erequire(_rewardsToken != address(stakingToken), "Cannot add StakingToken as reward");
+
+                await mockedWmxLocker.setVariable("rewardData", {
+                    [rewardToken.address]: {
+                        periodFinish: 1000000,
+                        lastUpdateTime:0 ,
+                        rewardRate: 10,
+                        rewardPerTokenStored: 10
+                    }
+                })
+
+                await expect(
+                    mockedWmxLocker.addReward(stakingToken.address, accounts[1].address)
+               ).to.be.revertedWith("Cannot add StakingToken as reward");
+                
+            });
+        });
+
+
+        describe("queueNewRewards()", async () => {
+            it("queueNewRewards", async () => {
+                
+                const rewardToken = await smock.fake({interface: IERC20});
+
+                await expect(
+                     mockedWmxLocker.queueNewRewards(rewardToken.address,1000)
+                ).to.be.revertedWith("!authorized");
+
+                await mockedWmxLocker.setVariable("rewardDistributors", {
+                    [rewardToken.address]: {
+                        [accounts[0].address]: true
+                    }
+                })
+
+                await expect(
+                    mockedWmxLocker.queueNewRewards(rewardToken.address,0)
+               ).to.be.revertedWith("No reward");
+
+            });
+        });
+
+
+        describe("emergencyWithdraw()", async () => {
+            it("emergencyWithdraw", async () => {
+                
+                const rewardToken = await smock.fake({interface: IERC20});
+
+
+                await expect(
+                    mockedWmxLocker.emergencyWithdraw()
+               ).to.be.revertedWith("Must be shutdown");
+
+               await mockedWmxLocker.setVariable("isShutdown", true);
+
+               await expect(
+                mockedWmxLocker.emergencyWithdraw()
+            ).to.be.revertedWith("Nothing locked");
+
+            });
+        });
+
+
+        describe("setKickIncentive()", async () => {
+            it("setKickIncentive", async () => {
+                
+                const rewardToken = await smock.fake({interface: IERC20});
+
+                await expect(
+                    mockedWmxLocker.setKickIncentive(600, 1000)
+               ).to.be.revertedWith("over max rate");
+
+               await mockedWmxLocker.setVariable("isShutdown", true);
+
+               await expect(
+                mockedWmxLocker.setKickIncentive(300, 1)
+            ).to.be.revertedWith("min delay");
+
+            });
+        });
+
+        describe("recoverERC20()", async () => {
+            it("recoverERC20", async () => {
+                
+                const rewardToken = await smock.fake({interface: IERC20});
+
+                await expect(
+                    mockedWmxLocker.recoverERC20(stakingToken.address, 100)
+               ).to.be.revertedWith("Cannot withdraw staking token");
+
+               await mockedWmxLocker.setVariable("rewardData", {
+                [rewardToken.address]: {
+                    periodFinish: 1000000,
+                    lastUpdateTime:1000000 ,
+                    rewardRate: 10,
+                    rewardPerTokenStored: 10
+                }
+            })
+
+               await expect(
+                mockedWmxLocker.recoverERC20(rewardToken.address, 100)
+            ).to.be.revertedWith("Cannot withdraw reward token");
+
+            });
+        });
+
+        describe("approveRewardDistributor()", async () => {
+            it("approveRewardDistributor", async () => {
+                
+                const rewardToken = await smock.fake({interface: IERC20});
+
+               await mockedWmxLocker.setVariable("rewardData", {
+                [rewardToken.address]: {
+                    periodFinish: 1000000,
+                    lastUpdateTime:0 ,
+                    rewardRate: 10,
+                    rewardPerTokenStored: 10
+                }
+            })
+
+               await expect(
+                mockedWmxLocker.approveRewardDistributor(
+                    rewardToken.address, accounts[1].address, true
+                )
+            ).to.be.revertedWith("Reward does not exist");
+
+            });
+
+
+            
+        });
+
+
+        // describe("blacklist", async () => {
+        //     // it.only("getPastVotes", async () => {
+                
+        //     //     const unlockTime = await (await getTimestamp()).sub(ONE_WEEK);
+
+        //     //     await expect(
+        //     //         mockedWmxLocker.getPastTotalSupply(unlockTime)
+        //     //     ).to.be.revertedWith("ERC20Votes: block not yet mined");
+                
+
+                
+        //     // });
+
+
+        //     it.only("blacklist", async () => {
+                    
+        //         stakingToken.safeApprove.returns(true);
+        //         stakingToken.safeTransferFrom.returns(true);
+        //        await mockedWmxLocker.setVariable("blacklist", {
+        //         [accounts[0].address]: true
+        //     })
+
+        //        await expect(
+        //         mockedWmxLocker.lock(
+        //             accounts[0].address, 100
+        //         )
+        //     ).to.be.revertedWith("blacklisted");
+
+
+
+        //     await mockedWmxLocker.setVariable("blacklist", {
+        //         [accounts[1].address]: true
+        //     });
+
+        //     await mockedWmxLocker.setVariable("blacklist", {
+        //         [accounts[0].address]: false
+        //     });
+
+        //     await expect(
+        //         mockedWmxLocker.lock(
+        //             accounts[1].address, 100
+        //         )
+        //     ).to.be.revertedWith("blacklisted");
+
+        //     });
+        // })
+
+
+         describe("getPastTotalSupply()", async () => {
+            it("getPastTotalSupply", async () => {
+                
+                const unlockTime = await getTimestamp()
+                let t = unlockTime.sub(ONE_WEEK);
+
+                await expect(
+                    mockedWmxLocker.getPastTotalSupply(unlockTime)
+                ).to.be.revertedWith("ERC20Votes: block not yet mined");
+                
+            });
+                
+        });
+
+
+        describe("balanceAtEpochOf()", async () => {
+            it("balanceAtEpochOf", async () => {
+                
+                const unlockTime = await getTimestamp()
+                let t = unlockTime.add(ONE_DAY);
+
+                await expect(
+                    mockedWmxLocker.balanceAtEpochOf(t, accounts[0].address)
+                ).to.be.revertedWith("Epoch is in the future");
+                
+            });
+                
+        });
+
+        describe("getReward()", async () => {
+            it("getReward", async () => {
+                
+                const unlockTime = await getTimestamp()
+                let t = unlockTime.add(ONE_DAY);
+
+                // await mockedWmxLocker["getReward(address,bool[])"](accounts[1].address, [false, false, false]);
+
+                await expect(
+                     mockedWmxLocker["getReward(address,bool[])"](accounts[1].address, [false, false, false])
+                ).to.be.revertedWith("!arr");
+                
+            });
+                
+        });
+
+
+        // const tx = await wmxLocker["getReward(address,bool[])"](aliceAddress, [false, false, false]);
+
+    });
+
+    
 });

@@ -12,9 +12,10 @@ import { WmxPenaltyForwarder, ExtraRewardsDistributor, Wmx } from "../../types/g
 import { getTimestamp, increaseTime } from "../../test-utils/time";
 import { ONE_WEEK, ZERO_ADDRESS } from "../../test-utils/constants";
 import { impersonateAccount } from "../../test-utils/index";
+import { MockContract, smock } from "@defi-wonderland/smock";
 
 chai.should();
-describe("WmxRewardPool", () => {
+describe("WmxPenaltyForwarder", () => {
     let accounts: Signer[];
 
     let contracts: SystemDeployed;
@@ -141,5 +142,84 @@ describe("WmxRewardPool", () => {
             //transaction will be reverted because malicious admin set the zero address to the distributor
             await expect(penaltyForwarder.forward()).to.be.revertedWith("ERC20: approve to the zero address");
         });
+    })
+
+    describe("", async () => {
+
+        let IExtraRewardsDistributor =  new ethers.utils.Interface([
+            "function addReward(address _token, uint256 _amount) external"
+        ])
+
+        const IERC20 = new ethers.utils.Interface([
+            "function safeTransfer(address token, address to, uint256 value) external returns(bool)",
+            "function safeTransferFrom(address, address from, address to, uint256 value) external returns(bool)",
+            "function safeApprove(address, address spender, uint256 value) external returns(bool)",
+            "function safeIncreaseAllowance(address, address spender, uint256 value) external returns(bool)",
+            "function safeDecreaseAllowance(address, address spender, uint256 value) external returns(bool)",
+            "function totalSupply() external view returns (uint256)",
+            "function transfer(address recipient, uint256 amount) external returns (bool)",
+            "function mint(address recipient, uint256 amount) external returns (bool)",
+            "function allowance(address owner, address spender) external view returns (uint256)",
+            "function approve(address spender, uint256 amount) external returns (bool)",
+            "function lock(address recipient, uint256 amount) external returns (bool)",
+            "function transferFrom(address sender, address recipient, uint256 amount) external returns (bool)",
+        ]);
+
+        let fakeDistributor = await smock.fake({interface: IExtraRewardsDistributor});
+        let token = await smock.fake({interface: IERC20});
+        let accounts;
+
+        let wmxPenaltyForwarder;
+        beforeEach(async () => {
+            accounts = await ethers.getSigners();
+
+            const WmxPenaltyForwarder = await smock.mock("WmxPenaltyForwarder");
+            wmxPenaltyForwarder = await WmxPenaltyForwarder.deploy(
+                fakeDistributor.address,
+                token.address,
+                "1000000000000",
+                accounts[1].address
+            );
+        })
+
+        it("forward", async () => {
+            await expect(wmxPenaltyForwarder.forward()).to.be.revertedWith('!elapsed')
+        })
+    })
+
+
+    describe("", async () => {
+
+        let IExtraRewardsDistributor =  new ethers.utils.Interface([
+            "function addReward(address _token, uint256 _amount) external"
+        ])
+
+        const IERC20 = new ethers.utils.Interface([
+            "function balanceOf(address) external view returns (uint256)",
+            "function transfer(address recipient, uint256 amount) external returns (bool)",
+            "function mint(address recipient, uint256 amount) external returns (bool)",
+        ]);
+
+        let fakeDistributor = await smock.fake({interface: IExtraRewardsDistributor});
+        let token = await smock.fake({interface: IERC20});
+        let accounts;
+
+        let wmxPenaltyForwarder;
+        beforeEach(async () => {
+            accounts = await ethers.getSigners();
+
+            const WmxPenaltyForwarder = await smock.mock("WmxPenaltyForwarder");
+            wmxPenaltyForwarder = await WmxPenaltyForwarder.deploy(
+                fakeDistributor.address,
+                token.address,
+                "0",
+                accounts[1].address
+            );
+        })
+
+        it("forward", async () => {
+            token.balanceOf.returns(0)
+            await expect(wmxPenaltyForwarder.forward()).to.be.revertedWith("!empty");
+        })
     })
 })
